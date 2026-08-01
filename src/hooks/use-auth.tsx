@@ -3,6 +3,8 @@ import pb from '@/lib/pocketbase/client'
 
 interface AuthContextType {
   user: Record<string, unknown> | null
+  userRole: 'admin' | 'consultor' | null
+  canEdit: boolean
   isAuthenticated: boolean
   signUp: (email: string, password: string) => Promise<{ error: unknown }>
   signIn: (email: string, password: string) => Promise<{ error: unknown }>
@@ -24,6 +26,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
   const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid)
   const [loading, setLoading] = useState(true)
+
+  const userRole =
+    (user?.role as string) === 'admin'
+      ? 'admin'
+      : (user?.role as string) === 'consultor'
+        ? 'consultor'
+        : null
+  const canEdit = userRole === 'admin'
 
   useEffect(() => {
     const unsubscribe = pb.authStore.onChange((_token, record) => {
@@ -68,7 +78,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, signUp, signIn, signOut, loading }}>
+    <AuthContext.Provider
+      value={{ user, userRole, canEdit, isAuthenticated, signUp, signIn, signOut, loading }}
+    >
       {children}
     </AuthContext.Provider>
   )

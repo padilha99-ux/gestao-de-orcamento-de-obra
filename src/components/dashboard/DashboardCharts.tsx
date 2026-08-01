@@ -1,142 +1,95 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart } from 'recharts'
-import { formatBRL } from '@/lib/format'
-
-interface DashboardChartsProps {
-  categoryData: { name: string; value: number }[]
-  stageData: { name: string; value: number }[]
-  evolutionData: { month: string; value: number }[]
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const chartConfig = {
-  value: { label: 'Valor', color: 'hsl(var(--chart-1))' },
+  value: { label: 'Valor', color: 'hsl(var(--primary))' },
 } satisfies ChartConfig
 
-function EmptyChart({ message }: { message: string }) {
+export function DashboardCharts({
+  categoryChartData,
+  stageChartData,
+  evolutionChartData,
+}: {
+  categoryChartData: { name: string; value: number }[]
+  stageChartData: { name: string; value: number }[]
+  evolutionChartData: { month: string; value: number }[]
+}) {
   return (
-    <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-      {message}
-    </div>
-  )
-}
-
-export function DashboardCharts({ categoryData, stageData, evolutionData }: DashboardChartsProps) {
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Gastos por Categoria</CardTitle>
+          <CardTitle className="text-base">Despesas por Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {categoryData.length === 0 ? (
-            <EmptyChart message="Sem dados para exibir" />
-          ) : (
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <BarChart data={categoryData} margin={{ left: 0, right: 0, top: 10 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11 }}
-                  interval={0}
-                  angle={-20}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis
-                  tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={50}
-                />
-                <ChartTooltip
-                  content={<ChartTooltipContent formatter={(value) => formatBRL(Number(value))} />}
-                />
-                <Bar dataKey="value" fill="hsl(var(--chart-1))" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          )}
+          <ChartContainer config={chartConfig} className="h-[250px] w-full">
+            <BarChart data={categoryChartData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis
+                tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                tickLine={false}
+                axisLine={false}
+                fontSize={12}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Gastos por Etapa</CardTitle>
+          <CardTitle className="text-base">Despesas por Etapa</CardTitle>
         </CardHeader>
         <CardContent>
-          {stageData.length === 0 ? (
-            <EmptyChart message="Sem dados para exibir" />
-          ) : (
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <BarChart data={stageData} margin={{ left: 0, right: 0, top: 10 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11 }}
-                  interval={0}
-                  angle={-20}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis
-                  tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={50}
-                />
-                <ChartTooltip
-                  content={<ChartTooltipContent formatter={(value) => formatBRL(Number(value))} />}
-                />
-                <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          )}
+          <ChartContainer config={chartConfig} className="h-[250px] w-full">
+            <BarChart data={stageChartData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis
+                tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                tickLine={false}
+                axisLine={false}
+                fontSize={12}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
-
-      <Card>
+      <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle className="text-base">Evolução dos Gastos</CardTitle>
+          <CardTitle className="text-base">Evolução de Despesas</CardTitle>
         </CardHeader>
         <CardContent>
-          {evolutionData.length === 0 ? (
-            <EmptyChart message="Sem dados para exibir" />
-          ) : (
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <LineChart data={evolutionData} margin={{ left: 0, right: 10, top: 10 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <YAxis
-                  tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={50}
-                />
-                <ChartTooltip
-                  content={<ChartTooltipContent formatter={(value) => formatBRL(Number(value))} />}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="hsl(var(--chart-3))"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              </LineChart>
-            </ChartContainer>
-          )}
+          <ChartContainer config={chartConfig} className="h-[250px] w-full">
+            <LineChart data={evolutionChartData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis
+                tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                tickLine={false}
+                axisLine={false}
+                fontSize={12}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+            </LineChart>
+          </ChartContainer>
         </CardContent>
       </Card>
     </div>

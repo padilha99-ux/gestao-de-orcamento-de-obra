@@ -1,4 +1,3 @@
-/* Main App Component - Handles routing (using react-router-dom), query client and other providers - use this file to add all routes */
 import { type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
@@ -7,6 +6,10 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import Index from './pages/Index'
 import Login from './pages/Login'
+import Invoices from './pages/Invoices'
+import BudgetPlanning from './pages/BudgetPlanning'
+import Reports from './pages/Reports'
+import Registers from './pages/Registers'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { Loader2 } from 'lucide-react'
@@ -40,6 +43,10 @@ const App = () => (
             }
           >
             <Route path="/" element={<Index />} />
+            <Route path="/invoices" element={<Invoices />} />
+            <Route path="/planning" element={<BudgetPlanning />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/registers" element={<Registers />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

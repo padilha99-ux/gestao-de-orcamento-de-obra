@@ -1,66 +1,68 @@
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertTriangle, Folder, Layers } from 'lucide-react'
-import { formatBRL } from '@/lib/format'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { formatCurrency } from '@/lib/format'
 import type { AlertItem } from '@/types'
 
-interface DashboardAlertsProps {
+export function DashboardAlerts({
+  categoryAlerts,
+  stageAlerts,
+}: {
   categoryAlerts: AlertItem[]
   stageAlerts: AlertItem[]
-}
-
-function AlertCard({
-  icon,
-  title,
-  alerts,
-}: {
-  icon: React.ReactNode
-  title: string
-  alerts: AlertItem[]
 }) {
-  if (alerts.length === 0) return null
-  return (
+  const hasAlerts = categoryAlerts.length > 0 || stageAlerts.length > 0
+
+  const renderAlertList = (title: string, alerts: AlertItem[]) => (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-        {icon}
-        {title}
-      </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {alerts.map((alert) => (
-          <Alert
-            key={alert.name}
-            variant="destructive"
-            className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20"
+      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
+      {alerts.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-green-600">
+          <CheckCircle2 className="h-4 w-4" />
+          Tudo dentro do previsto
+        </div>
+      ) : (
+        alerts.map((alert, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-3"
           >
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-900 dark:text-amber-200">{alert.name}</AlertTitle>
-            <AlertDescription className="text-amber-800 dark:text-amber-300">
-              <div className="text-xs">Previsto: {formatBRL(alert.planned)}</div>
-              <div className="text-xs">Executado: {formatBRL(alert.executed)}</div>
-              <div className="text-xs font-semibold">Estouro: {formatBRL(alert.exceeded)}</div>
-            </AlertDescription>
-          </Alert>
-        ))}
-      </div>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <span className="text-sm font-medium">{alert.name}</span>
+            </div>
+            <div className="text-right text-xs">
+              <span className="text-muted-foreground">Prev: {formatCurrency(alert.planned)}</span>
+              {' · '}
+              <span className="font-medium text-destructive">
+                Exec: {formatCurrency(alert.executed)}
+              </span>
+              {' · '}
+              <span className="text-destructive">+{formatCurrency(alert.exceeded)}</span>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   )
-}
-
-export function DashboardAlerts({ categoryAlerts, stageAlerts }: DashboardAlertsProps) {
-  const hasAlerts = categoryAlerts.length > 0 || stageAlerts.length > 0
-  if (!hasAlerts) return null
 
   return (
-    <div className="space-y-4">
-      <AlertCard
-        icon={<Folder className="h-4 w-4" />}
-        title="Categorias excedidas"
-        alerts={categoryAlerts}
-      />
-      <AlertCard
-        icon={<Layers className="h-4 w-4" />}
-        title="Etapas excedidas"
-        alerts={stageAlerts}
-      />
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Alertas de Estouro</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!hasAlerts ? (
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <CheckCircle2 className="h-4 w-4" />
+            Nenhum estouro de orçamento detectado.
+          </div>
+        ) : (
+          <>
+            {renderAlertList('Por Categoria', categoryAlerts)}
+            {renderAlertList('Por Etapa', stageAlerts)}
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }

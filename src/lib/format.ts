@@ -1,23 +1,15 @@
-export function formatBRL(value: number): string {
+export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value || 0)
+  }).format(value)
+}
+
+export function formatDate(date: string): string {
+  if (!date) return '-'
+  return new Date(date + 'T00:00:00').toLocaleDateString('pt-BR')
 }
 
 export function formatPercent(value: number): string {
-  if (!isFinite(value)) return '—'
   return `${value.toFixed(1)}%`
-}
-
-export function formatDate(dateStr: string): string {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('pt-BR')
-}
-
-export function formatMonth(dateStr: string): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
 }
