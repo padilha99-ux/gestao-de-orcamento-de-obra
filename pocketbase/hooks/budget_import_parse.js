@@ -1,4 +1,3 @@
-// @deps xlsx@0.18.5
 routerAdd(
   'POST',
   '/backend/v1/budget-import/parse',
@@ -11,25 +10,89 @@ routerAdd(
     var content = body.content
     if (!content) return e.badRequestError('File content is required')
 
-    var XLSX = require('xlsx')
-    var workbook
-    try {
-      workbook = XLSX.read(content, { type: 'base64' })
-    } catch (err) {
-      return e.badRequestError('Could not parse file: ' + String(err.message || err))
+    if (typeof content !== 'string') {
+      return e.badRequestError('Content must be a text string (CSV)')
     }
 
-    var sheetName = workbook.SheetNames[0]
-    if (!sheetName) return e.badRequestError('Spreadsheet has no sheets')
+    if (content.length >= 2 && content.charCodeAt(0) === 80 && content.charCodeAt(1) === 75) {
+      return e.badRequestError('Arquivos XLSX nao sao suportados. Converta para CSV.')
+    }
 
-    var sheet = workbook.Sheets[sheetName]
-    var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
+    if (content.charCodeAt(0) === 65279) {
+      content = content.substring(1)
+    }
 
-    if (!rows || rows.length < 2) return e.badRequestError('Spreadsheet has no data rows')
+    var firstNewline = content.indexOf('\n')
+    var firstLine = firstNewline !== -1 ? content.substring(0, firstNewline) : content
+    var delimiter = ','
+    var semicolonCount = 0
+    var commaCount = 0
+    var tabCount = 0
+    for (var fi = 0; fi < firstLine.length; fi++) {
+      if (firstLine[fi] === ';') semicolonCount++
+      else if (firstLine[fi] === ',') commaCount++
+      else if (firstLine[fi] === '\t') tabCount++
+    }
+    if (semicolonCount > commaCount && semicolonCount >= tabCount) delimiter = ';'
+    else if (tabCount > commaCount && tabCount > semicolonCount) delimiter = '\t'
+
+    var rows = []
+    var currentRow = []
+    var currentField = ''
+    var inQuotes = false
+    var ci = 0
+
+    while (ci < content.length) {
+      var char = content[ci]
+
+      if (inQuotes) {
+        if (char === '"') {
+          if (content[ci + 1] === '"') {
+            currentField += '"'
+            ci += 2
+          } else {
+            inQuotes = false
+            ci++
+          }
+        } else {
+          currentField += char
+          ci++
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true
+          ci++
+        } else if (char === delimiter) {
+          currentRow.push(currentField)
+          currentField = ''
+          ci++
+        } else if (char === '\r') {
+          ci++
+        } else if (char === '\n') {
+          currentRow.push(currentField)
+          currentField = ''
+          if (currentRow.length > 0) rows.push(currentRow)
+          currentRow = []
+          ci++
+        } else {
+          currentField += char
+          ci++
+        }
+      }
+    }
+
+    if (currentField !== '' || currentRow.length > 0) {
+      currentRow.push(currentField)
+      if (currentRow.length > 0) rows.push(currentRow)
+    }
+
+    if (rows.length < 2) return e.badRequestError('File has no data rows')
 
     var headers = rows[0].map(function (h, i) {
-      return String(h || 'Column ' + (i + 1))
+      var trimmed = String(h || '').trim()
+      return trimmed !== '' ? trimmed : 'Column ' + (i + 1)
     })
+
     var dataRows = rows
       .slice(1)
       .filter(function (r) {
@@ -45,7 +108,9 @@ routerAdd(
         return obj
       })
 
-    return e.json(200, { headers: headers, rows: dataRows, sheetNames: workbook.SheetNames })
+    if (dataRows.length === 0) return e.badRequestError('File has no data rows')
+
+    return e.json(200, { headers: headers, rows: dataRows, sheetNames: ['Sheet1'] })
   },
   $apis.requireAuth(),
 )

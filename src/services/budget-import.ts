@@ -1,92 +1,96 @@
 import pb from '@/lib/pocketbase/client'
-import { createBudgetItem } from '@/services/budget-items'
-import type { BudgetItem } from '@/types'
+import { parseNumber, parseDate } from '@/lib/import-utils'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
-export interface ParsedSpreadsheet {
+export interface ParsedData {
   headers: string[]
   rows: Record<string, string>[]
   sheetNames: string[]
 }
 
-export interface ColumnMappings {
-  item: string
-  planned_value: string
-  planned_date: string
-  responsible: string
-  category: string
-  stage: string
+export interface ColumnMapping {
+  item?: string
+  stage?: string
+  planned_value?: string
+  category?: string
+  planned_date?: string
+  responsible?: string
 }
 
-export interface ReviewRow {
-  item: string
-  planned_value: string
-  planned_date: string
-  responsible: string
-  category: string
-  stage: string
-  categoryMatched: boolean
-  stageMatched: boolean
-  isDuplicate: boolean
-  skipped: boolean
-  errors: Record<string, string>
+export interface ImportResult {
+  created: number
+  errors: string[]
 }
 
-export interface SaveResult {
-  saved: number
-  skipped: number
-  errors: number
-}
-
-export async function parseBudgetFile(file: File): Promise<ParsedSpreadsheet> {
-  const base64 = await fileToBase64(file)
+export async function parseBudgetFile(content: string, filename: string): Promise<ParsedData> {
   return pb.send('/backend/v1/budget-import/parse', {
     method: 'POST',
-    body: JSON.stringify({ content: base64, filename: file.name }),
+    body: JSON.stringify({ content, filename }),
     headers: { 'Content-Type': 'application/json' },
-  }) as Promise<ParsedSpreadsheet>
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1])
-    }
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
   })
 }
 
-export function isDuplicateRow(row: ReviewRow, existing: BudgetItem[]): boolean {
-  const value = parseFloat(row.planned_value) || 0
-  return existing.some(
-    (e) =>
-      e.item === row.item &&
-      e.planned_value === value &&
-      e.planned_date === row.planned_date &&
-      e.category === row.category &&
-      e.stage === row.stage,
-  )
-}
+export async function importBudgetItems(
+  rows: Record<string, string>[],
+  mapping: ColumnMapping,
+): Promise<ImportResult> {
+  const stages = await pb.collection('stages').getFullList()
+  const categories = await pb.collection('categories').getFullList()
 
-export async function saveImportedItems(rows: ReviewRow[]): Promise<SaveResult> {
-  const validRows = rows.filter(
-    (r) => !r.skipped && !r.isDuplicate && Object.keys(r.errors).length === 0,
-  )
-  const results = await Promise.allSettled(
-    validRows.map((row) =>
-      createBudgetItem({
-        item: row.item.trim(),
-        stage: row.stage,
-        planned_value: parseFloat(row.planned_value) || 0,
-        category: row.category,
-        planned_date: row.planned_date,
-        responsible: row.responsible.trim(),
-      }),
-    ),
-  )
-  const saved = results.filter((r) => r.status === 'fulfilled').length
-  const errors = results.filter((r) => r.status === 'rejected').length
-  return { saved, skipped: rows.length - validRows.length, errors }
+  const stageMap = new Map<string, string>()
+  stages.forEach((s) => stageMap.set(String(s.name).toLowerCase(), s.id))
+
+  const categoryMap = new Map<string, string>()
+  categories.forEach((c) => categoryMap.set(String(c.name).toLowerCase(), c.id))
+
+  let created = 0
+  const errors: string[] = []
+
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      const row = rows[i]
+
+      const stageName = mapping.stage ? (row[mapping.stage] || '').trim() : ''
+      let stageId = stageMap.get(stageName.toLowerCase())
+      if (!stageId && stageName) {
+        const newStage = await pb.collection('stages').create({ name: stageName })
+        stageMap.set(stageName.toLowerCase(), newStage.id)
+        stageId = newStage.id
+      }
+
+      const categoryName = mapping.category ? (row[mapping.category] || '').trim() : ''
+      let categoryId = categoryMap.get(categoryName.toLowerCase())
+      if (!categoryId && categoryName) {
+        const newCat = await pb.collection('categories').create({ name: categoryName })
+        categoryMap.set(categoryName.toLowerCase(), newCat.id)
+        categoryId = newCat.id
+      }
+
+      const item = mapping.item ? (row[mapping.item] || '').trim() : ''
+      if (!item) {
+        errors.push(`Linha ${i + 2}: Item nao especificado`)
+        continue
+      }
+
+      const plannedValue = mapping.planned_value ? parseNumber(row[mapping.planned_value]) : 0
+      const plannedDate = mapping.planned_date ? parseDate(row[mapping.planned_date]) : ''
+      const responsible = mapping.responsible ? (row[mapping.responsible] || '').trim() : ''
+
+      const data: Record<string, unknown> = {
+        item,
+        planned_value: plannedValue,
+        responsible,
+      }
+      if (stageId) data.stage = stageId
+      if (categoryId) data.category = categoryId
+      if (plannedDate) data.planned_date = plannedDate
+
+      await pb.collection('budget_items').create(data)
+      created++
+    } catch (err) {
+      errors.push(`Linha ${i + 2}: ${getErrorMessage(err)}`)
+    }
+  }
+
+  return { created, errors }
 }

@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -9,79 +8,80 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import type { ParsedSpreadsheet, ColumnMappings } from '@/services/budget-import'
+import type { ColumnMapping } from '@/services/budget-import'
 
 interface MappingStepProps {
-  parsedData: ParsedSpreadsheet
-  mappings: ColumnMappings
-  onMappingChange: (field: string, value: string) => void
-  onNext: () => void
+  headers: string[]
+  mapping: ColumnMapping
+  onMappingChange: (mapping: ColumnMapping) => void
   onBack: () => void
+  onNext: () => void
 }
 
-const requiredFields = [
-  { key: 'item', label: 'Item / Descrição' },
-  { key: 'planned_value', label: 'Valor Planejado' },
-  { key: 'planned_date', label: 'Data Planejada' },
-  { key: 'responsible', label: 'Responsável' },
-] as const
-
-const optionalFields = [
-  { key: 'category', label: 'Categoria (opcional)' },
-  { key: 'stage', label: 'Etapa (opcional)' },
-] as const
+const FIELDS: { key: keyof ColumnMapping; label: string; required: boolean }[] = [
+  { key: 'item', label: 'Item', required: true },
+  { key: 'stage', label: 'Etapa', required: true },
+  { key: 'planned_value', label: 'Valor Planejado', required: true },
+  { key: 'category', label: 'Categoria', required: false },
+  { key: 'planned_date', label: 'Data Planejada', required: false },
+  { key: 'responsible', label: 'Responsavel', required: false },
+]
 
 export function MappingStep({
-  parsedData,
-  mappings,
+  headers,
+  mapping,
   onMappingChange,
-  onNext,
   onBack,
+  onNext,
 }: MappingStepProps) {
-  const allRequiredSet = requiredFields.every((f) => mappings[f.key])
+  const handleFieldChange = (key: keyof ColumnMapping, value: string) => {
+    onMappingChange({ ...mapping, [key]: value === '__none__' ? undefined : value })
+  }
 
-  const renderSelect = (fieldKey: string, label: string) => (
-    <div key={fieldKey} className="space-y-1">
-      <Label>{label}</Label>
-      <Select
-        value={mappings[fieldKey as keyof ColumnMappings] || undefined}
-        onValueChange={(v) => onMappingChange(fieldKey, v)}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Selecione a coluna" />
-        </SelectTrigger>
-        <SelectContent>
-          {parsedData.headers.map((h) => (
-            <SelectItem key={h} value={h}>
-              {h}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  )
+  const canProceed = FIELDS.filter((f) => f.required).every((f) => mapping[f.key])
 
   return (
-    <Card>
+    <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Mapeamento de Colunas</CardTitle>
+        <CardTitle>Mapear Colunas</CardTitle>
+        <CardDescription>
+          Selecione qual coluna do arquivo corresponde a cada campo.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Associe cada coluna da planilha aos campos correspondentes do orçamento.
-        </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {requiredFields.map((f) => renderSelect(f.key, f.label))}
-          {optionalFields.map((f) => renderSelect(f.key, f.label))}
+      <CardContent className="space-y-4">
+        <div className="space-y-3">
+          {FIELDS.map((field) => (
+            <div key={field.key} className="flex items-center gap-4">
+              <label className="w-40 text-sm font-medium shrink-0">
+                {field.label}
+                {field.required && <span className="text-destructive ml-1">*</span>}
+              </label>
+              <Select
+                value={mapping[field.key] || '__none__'}
+                onValueChange={(v) => handleFieldChange(field.key, v)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Selecione uma coluna" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">-- Nenhum --</SelectItem>
+                  {headers.map((h) => (
+                    <SelectItem key={h} value={h}>
+                      {h}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
         </div>
-        <div className="flex justify-between">
+
+        <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
           </Button>
-          <Button disabled={!allRequiredSet} onClick={onNext}>
-            Revisar Itens
-            <ArrowRight className="ml-2 h-4 w-4" />
+          <Button disabled={!canProceed} onClick={onNext}>
+            Revisar <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </CardContent>

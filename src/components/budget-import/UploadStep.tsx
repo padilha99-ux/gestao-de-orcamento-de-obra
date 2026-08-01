@@ -1,77 +1,104 @@
-import { useRef, useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import { Upload, FileText, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Upload, FileSpreadsheet, Loader2, AlertCircle } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface UploadStepProps {
-  onFile: (file: File) => void
-  parsing: boolean
-  error: string
+  onFileParsed: (file: File) => void
+  isLoading: boolean
+  error: string | null
 }
 
-export function UploadStep({ onFile, parsing, error }: UploadStepProps) {
+export function UploadStep({ onFileParsed, isLoading, error }: UploadStepProps) {
+  const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [dragOver, setDragOver] = useState(false)
 
-  const handleFile = (file: File | undefined) => {
-    if (!file) return
-    const ext = file.name.split('.').pop()?.toLowerCase()
-    if (ext !== 'xlsx' && ext !== 'csv') return
-    onFile(file)
-  }
+  const handleFile = useCallback(
+    (file: File) => {
+      onFileParsed(file)
+    },
+    [onFileParsed],
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragging(false)
+      const file = e.dataTransfer.files[0]
+      if (file) handleFile(file)
+    },
+    [handleFile],
+  )
 
   return (
-    <Card>
-      <CardContent className="p-6">
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Importar Orcamento</CardTitle>
+        <CardDescription>Faca upload de um arquivo CSV com os itens do orcamento.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
         <div
-          className={cn(
-            'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors',
-            dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
-          )}
+          onDrop={handleDrop}
           onDragOver={(e) => {
             e.preventDefault()
-            setDragOver(true)
+            setIsDragging(true)
           }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
+          onDragLeave={(e) => {
             e.preventDefault()
-            setDragOver(false)
-            handleFile(e.dataTransfer.files[0])
+            setIsDragging(false)
           }}
+          onClick={() => !isLoading && inputRef.current?.click()}
+          className={cn(
+            'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors duration-200',
+            isDragging
+              ? 'border-primary bg-primary/5'
+              : 'border-muted-foreground/25 hover:border-primary/50',
+          )}
         >
-          {parsing ? (
-            <>
-              <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-              <p className="mt-4 text-sm text-muted-foreground">Processando arquivo...</p>
-            </>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleFile(f)
+            }}
+          />
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Processando arquivo...</p>
+            </div>
           ) : (
-            <>
-              <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
-              <p className="mt-4 text-sm font-medium">
-                Arraste uma planilha ou clique para selecionar
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm font-medium">
+                Arraste um arquivo CSV aqui ou clique para selecionar
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">Formatos aceitos: .xlsx, .csv</p>
-              <Button className="mt-4" onClick={() => inputRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" />
-                Selecionar Arquivo
-              </Button>
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".xlsx,.csv"
-                className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0])}
-              />
-            </>
+              <p className="text-xs text-muted-foreground">Apenas arquivos .csv sao suportados</p>
+            </div>
           )}
         </div>
+
         {error && (
-          <div className="mt-4 flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {error}
+          <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
+
+        <div className="rounded-md bg-muted/50 p-4">
+          <div className="flex items-start gap-2">
+            <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Formato esperado do CSV:</p>
+              <p>Colunas: Item, Etapa, Valor Planejado, Categoria, Data Planejada, Responsavel</p>
+              <p>Delimitadores suportados: virgula, ponto e virgula ou tabulacao</p>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
