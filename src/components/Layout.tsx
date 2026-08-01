@@ -11,20 +11,22 @@ import {
   CalendarCheck,
   FileBarChart,
   Settings,
+  Upload,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/invoices', label: 'Notas Fiscais', icon: Receipt },
-  { to: '/planning', label: 'Planejamento', icon: CalendarCheck },
-  { to: '/reports', label: 'Relatórios', icon: FileBarChart },
-  { to: '/registers', label: 'Cadastros', icon: Settings },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+  { to: '/invoices', label: 'Notas Fiscais', icon: Receipt, adminOnly: false },
+  { to: '/planning', label: 'Planejamento', icon: CalendarCheck, adminOnly: false },
+  { to: '/import', label: 'Importar', icon: Upload, adminOnly: true },
+  { to: '/reports', label: 'Relatórios', icon: FileBarChart, adminOnly: false },
+  { to: '/registers', label: 'Cadastros', icon: Settings, adminOnly: false },
 ]
 
 export default function Layout() {
-  const { user, userRole, signOut } = useAuth()
+  const { user, userRole, canEdit, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -40,25 +42,27 @@ export default function Layout() {
 
   const renderNav = (onNavigate?: () => void) => (
     <nav className="flex flex-col gap-1">
-      {navItems.map((item) => {
-        const isActive = location.pathname === item.to
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </Link>
-        )
-      })}
+      {navItems
+        .filter((item) => !item.adminOnly || canEdit)
+        .map((item) => {
+          const isActive = location.pathname === item.to
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={onNavigate}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          )
+        })}
     </nav>
   )
 

@@ -10,6 +10,7 @@ import Invoices from './pages/Invoices'
 import BudgetPlanning from './pages/BudgetPlanning'
 import Reports from './pages/Reports'
 import Registers from './pages/Registers'
+import BudgetImport from './pages/BudgetImport'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { Loader2 } from 'lucide-react'
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/planning" element={<BudgetPlanning />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/registers" element={<Registers />} />
+            <Route path="/import" element={<BudgetImport />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
